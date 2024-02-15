@@ -12,7 +12,7 @@ st.title("QuantConnect Trade Analyzer")
 
 
 keywords = st_tags(
-    label='Enter Keywords',
+    label='Enter Filter',
     text='Press enter to add more',
     value=['all'],
     suggestions=['all', 'win', 'loss', "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY", "NZDJPY", "EURAUD", "EURGBP", "EURCAD", "EURCHF", "EURNZD", "GBPAUD", "GBPCAD", "GBPCHF", "GBPNZD", "AUDCAD", "AUDCHF", "AUDNZD", "CADCHF", "CADNZD"],
@@ -37,7 +37,19 @@ if uploaded_file is not None:
 
     #data = pd.read_csv('eurusd1_data.csv', parse_dates = ["time"], index_col= "time")
     trades = pd.DataFrame()
-
+    win = 0
+    loss = 0
+    for line in lines:
+        index = lines.index(line)
+        if index > len(lines) - 4:
+                break
+        if line[28:39] == "Date Found:":
+            if lines[index+3][28:42] == "Stop Loss Hit:":
+                loss += 1 
+            else:
+                win += 1
+    
+    st.header("Win Ratio: " + str(round(win/(win+loss)*100))+ "%")
     
     for line in lines:
         if line[26] == ":":
