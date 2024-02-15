@@ -7,6 +7,7 @@ api = tpqoa.tpqoa("oanda.cfg")
 from streamlit_tags import st_tags, st_tags_sidebar
 st.set_page_config(layout="wide")
 
+st.image("Blue.png", width=300)
 st.title("QuantConnect Trade Analyzer")
 
 
