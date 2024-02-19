@@ -25,19 +25,25 @@ keywords = st_tags(
 
 
 
-uploaded_file = st.file_uploader("Choose a TXT file", accept_multiple_files=False)
+uploaded_file = st.file_uploader("Choose a TXT file", accept_multiple_files=False, type="txt")
+uploaded_table = st.file_uploader("Choose a CSV file", accept_multiple_files=False, type="csv")
+trades = pd.read_csv(uploaded_table, index_col="Time")
+trades.index = pd.to_datetime(trades.index).tz_convert(None)
+#trades.index += pd.Timedelta(pd.to_timedelta("4 hours"))
 
-if uploaded_file is not None:
+st.write(trades)
+
+if uploaded_file is not None and uploaded_table is not None:
     name = uploaded_file.name
+    
 
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
     raw = stringio.readlines()
     lines = [line.rstrip() for line in raw]
-    print(lines)
 
 
     #data = pd.read_csv('eurusd1_data.csv', parse_dates = ["time"], index_col= "time")
-    trades = pd.DataFrame()
+
     win = 0
     loss = 0
     for line in lines:
@@ -65,6 +71,13 @@ if uploaded_file is not None:
                     instrument = line[20:23]+"_"+line[23:26]
                     distal = lines[index+1][36:]
                     proximal = lines[index+2][38:]
+                    #print(pd.to_datetime(line[40:59]), pd.to_datetime(line[0:19]))
+                    
+                    
+                    
+                    session = trades[(trades.index >= pd.to_datetime(line[40:59])+ pd.Timedelta(pd.to_timedelta("4 hours"))) & (trades.index <= pd.to_datetime(line[0:19])+ pd.Timedelta(pd.to_timedelta("4 hours"))) & (trades.Symbol == line[20:26])]
+                    print(session)
+
                     if lines[index+3][28:42] == "Stop Loss Hit:":
                         exit = lines[index+3][43:]
                         type = "Stop Loss Hit"
@@ -72,17 +85,23 @@ if uploaded_file is not None:
                         exit = lines[index+3][45:]
                         type = "Take Profit Hit"
                     
-                    print(exit)
                     data = api.get_history(instrument = instrument, start = dateStart, end = dateEnd,
                         granularity = "M15", price = "M", localize = False)
 
                     st.header(line[20:26])
+                    st.subheader("P/L: $"+str(round(0-session.Value.sum())))
+                    #st.subheader("P/L: $"+str(round((0-session.Value.sum())/session.Value.iloc[0] *100))+"%")
                     st.subheader(pd.to_datetime(line[40:59]) + pd.Timedelta(pd.to_timedelta("4 hours")))
                     fig = pg.Figure()
                     fig.add_trace(pg.Candlestick(x=data.index, open=data["o"], high=data["h"], low=data["l"], close=data["c"]))
-                    fig.add_hline(y=float(proximal))#, annotation="Proximal")
-                    fig.add_hline(y=float(distal))#, annotation="Distal")
-                    fig.add_hline(y=float(exit), annotation_text=type)
+                    fig.add_hline(y=float(proximal), annotation_text="Proximal")#, annotation="Proximal")
+                    fig.add_hline(y=float(distal), annotation_text="Distal")#, annotation="Distal")
+                    #fig.add_hline(y=float(exit), annotation_text=type)
+                    for index, row in session.iterrows():
+                        if row.Quantity > 0:
+                            fig.add_hline(y=row.Price, annotation_text="Buy")
+                        else:
+                            fig.add_hline(y=row.Price, annotation_text="Sell")
                     fig.update_layout(
                         margin=dict(l=20, r=20, t=20, b=20),
                         width=1500,
