@@ -98,9 +98,9 @@ if uploaded_file is not None and uploaded_table is not None:
                     fig.add_hline(y=float(distal), annotation_text="Distal")#, annotation="Distal")
                     #fig.add_hline(y=float(exit), annotation_text=type)
                     for index, row in session.iterrows():
-                        if row.Quantity > 0:
+                        if row.Quantity > 0 and row.Price != 0:
                             fig.add_hline(y=row.Price, annotation_text="Buy")
-                        else:
+                        elif row.Price != 0:
                             fig.add_hline(y=row.Price, annotation_text="Sell")
                     fig.update_layout(
                         margin=dict(l=20, r=20, t=20, b=20),
