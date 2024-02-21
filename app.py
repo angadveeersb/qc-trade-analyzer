@@ -26,7 +26,7 @@ granularity = st_tags(
     value=['15 Min'],
     suggestions=['15 Min', '5 Min'],
     maxtags=1,
-    key="aljnf")
+    key="dldfd")
 
 
 
