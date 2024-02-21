@@ -23,8 +23,8 @@ keywords = st_tags(
 granularity = st_tags(
     label='Enter Interval',
     text='Press enter to add more',
-    value=['15 Min'],
-    suggestions=['15 Min', '5 Min'],
+    value=['M15'],
+    suggestions=['M15', 'M5'],
     maxtags=1,
     key="dldfd")
 
