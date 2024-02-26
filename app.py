@@ -77,7 +77,7 @@ if uploaded_file is not None and uploaded_table is not None:
                         type = "Take Profit Hit"
                     
                     data = api.get_history(instrument = instrument, start = dateStart, end = dateEnd,
-                        granularity = granularity[0], price = "M", localize = False)
+                        granularity = granularity, price = "M", localize = False)
 
                     st.header(line[20:26])
                     st.subheader("P/L: $"+str(round(0-session.Value.sum())))
