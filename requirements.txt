@@ -8,3 +8,8 @@ forex-python==1.8
 simplejson==3.19.2
 pyfolio
 matplotlib
+requests
+charset-normalizer
+idna
+urllib3
+certifi
