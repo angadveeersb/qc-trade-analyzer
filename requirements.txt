@@ -6,12 +6,4 @@ streamlit_tags
 numpy
 pyfolio
 matplotlib
-certifi==2022.12.7
-charset-normalizer==2.1.1
 forex-python==1.8
-idna==3.4
-Pillow==9.4.0
-requests
-simplejson==3.18.1
-urllib3==1.26.13
-wcwidth==0.2.5
