@@ -4,6 +4,7 @@ tpqoa @ git+https://github.com/yhilpisch/tpqoa@f47a1ffddd2b2684c7e1569df6210b98d
 plotly==5.14.1
 streamlit_tags
 numpy
-forex-python
+forex-python==1.8 
+simplejson==3.19.2
 pyfolio
 matplotlib
