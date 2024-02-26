@@ -5,7 +5,6 @@ import numpy as np
 import plotly.graph_objects as pg
 from io import StringIO 
 api = tpqoa.tpqoa("oanda.cfg")
-from streamlit_tags import st_tags, st_tags_sidebar
 from forex_python.converter import CurrencyRates
 import pyfolio as pf
 import matplotlib.pyplot as plt
