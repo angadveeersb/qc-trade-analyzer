@@ -11,44 +11,29 @@ st.image("Blue.png", width=300)
 st.title("QuantConnect Trade Analyzer")
 
 
+uploaded_file = st.sidebar.file_uploader("Choose a TXT file", accept_multiple_files=False, type="txt")
+uploaded_table = st.sidebar.file_uploader("Choose a CSV file", accept_multiple_files=False, type="csv")
 
-keywords = st_tags(
-    label='Enter Filter',
-    text='Press enter to add more',
-    value=['all'],
-    suggestions=['all', 'win', 'loss', "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY", "NZDJPY", "EURAUD", "EURGBP", "EURCAD", "EURCHF", "EURNZD", "GBPAUD", "GBPCAD", "GBPCHF", "GBPNZD", "AUDCAD", "AUDCHF", "AUDNZD", "CADCHF", "CADNZD"],
-    maxtags=1,
-    key="aljnf")
-
-granularity = st_tags(
-    label='Enter Interval',
-    text='Press enter to add more',
-    value=['M15'],
-    suggestions=['M15', 'M5'],
-    maxtags=1,
-    key="dldfd")
-
-
-
-
-uploaded_file = st.file_uploader("Choose a TXT file", accept_multiple_files=False, type="txt")
-uploaded_table = st.file_uploader("Choose a CSV file", accept_multiple_files=False, type="csv")
-trades = pd.read_csv(uploaded_table, index_col="Time")
-trades.index = pd.to_datetime(trades.index).tz_convert(None)
 #trades.index += pd.Timedelta(pd.to_timedelta("4 hours"))
+granularity = st.sidebar.radio(
+    "Enter Interval",
+    ['M15', 'M5']
+)
 
-st.write(trades)
+keywords = st.sidebar.selectbox(
+    "Enter Filter",
+    ['None', 'Win', 'Loss', "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY", "NZDJPY", "EURAUD", "EURGBP", "EURCAD", "EURCHF", "EURNZD", "GBPAUD", "GBPCAD", "GBPCHF", "GBPNZD", "AUDCAD", "AUDCHF", "AUDNZD", "CADCHF", "CADNZD"],
+)
 
 if uploaded_file is not None and uploaded_table is not None:
+    trades = pd.read_csv(uploaded_table, index_col="Time")
+    trades.index = pd.to_datetime(trades.index).tz_convert(None)
     name = uploaded_file.name
-    
+    st.write(trades)
 
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
     raw = stringio.readlines()
     lines = [line.rstrip() for line in raw]
-
-
-    #data = pd.read_csv('eurusd1_data.csv', parse_dates = ["time"], index_col= "time")
 
     win = 0
     loss = 0
@@ -70,7 +55,7 @@ if uploaded_file is not None and uploaded_table is not None:
             index = lines.index(line)
             if index > len(lines) - 4:
                 break
-            if "all" in keywords or instrument in keywords or ("win" in keywords and lines[index+3][28:42] != "Stop Loss Hit:") or ("loss" in keywords and lines[index+3][28:42] == "Stop Loss Hit:"):
+            if "None" in keywords or instrument in keywords or ("Win" in keywords and lines[index+3][28:42] != "Stop Loss Hit:") or ("Loss" in keywords and lines[index+3][28:42] == "Stop Loss Hit:"):
                 if line[28:39] == "Date Found:":
                     dateStart = pd.to_datetime(line[40:59]) + pd.Timedelta(pd.to_timedelta("2 hours"))
                     dateEnd = pd.to_datetime(line[0:19]) + pd.Timedelta(pd.to_timedelta("8 hours"))
