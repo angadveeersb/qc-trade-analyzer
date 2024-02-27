@@ -5,7 +5,6 @@ import numpy as np
 import plotly.graph_objects as pg
 from io import StringIO 
 api = tpqoa.tpqoa("oanda.cfg")
-from forex_python.converter import CurrencyRates
 import pyfolio as pf
 import matplotlib.pyplot as plt
 import yfinance as yf
@@ -39,7 +38,7 @@ TP1 = 0
 TP2 = 0
 TSL = 0
 PnL = 0
-c = CurrencyRates()
+
 if uploaded_file is None or uploaded_table is None:
     st.warning("Upload TXT and CSV files to begin")
 
