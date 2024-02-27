@@ -8,6 +8,8 @@ api = tpqoa.tpqoa("oanda.cfg")
 from forex_python.converter import CurrencyRates
 import pyfolio as pf
 import matplotlib.pyplot as plt
+import yfinance as yf
+
 
 
 st.set_page_config(layout="wide")
@@ -19,7 +21,6 @@ st.title("QuantConnect Trade Analyzer")
 uploaded_file = st.sidebar.file_uploader("Choose a TXT file", accept_multiple_files=False, type="txt")
 uploaded_table = st.sidebar.file_uploader("Choose a CSV file", accept_multiple_files=False, type="csv")
 
-#trades.index += pd.Timedelta(pd.to_timedelta("4 hours"))
 granularity = st.sidebar.radio(
     "Enter Interval",
     ['M15', 'M5']
@@ -36,6 +37,7 @@ orders = pd.DataFrame()
 SL = 0
 TP1 = 0
 TP2 = 0
+TSL = 0
 PnL = 0
 c = CurrencyRates()
 if uploaded_file is None or uploaded_table is None:
@@ -47,30 +49,53 @@ elif uploaded_file is not None and uploaded_table is not None:
     trades = trades[trades.Status != "Canceled"]
     currencies = [pair[3:] for pair in symbols]
     currencies = list(set(currencies))
-    exchange_rate = []
-    mid = trades.index[round(len(trades)/2)]
-    for cur in currencies:
-        exchange_rate.append(c.convert(cur, 'USD', 1, pd.to_datetime(mid)))
+
     for i in range(0, len(trades)):
         if trades.iloc[i].Quantity > 0:
             time = trades.index[i]
             symbol = trades.iloc[i].Symbol
             price = trades.iloc[i].Price
             quantity = trades.iloc[i].Quantity
-            if trades.iloc[i].Quantity == -trades.iloc[i+1].Quantity:
-                PnL = (trades.iloc[i+1].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity
-                SL = trades.iloc[i+1].Price
+            index1 = 0
+            index2 = 0
+            for k in range(i+1, len(trades)):
+                if trades.iloc[k].Symbol == symbol:
+                    index1 = k
+                    break
+            for k in range(index1+1, len(trades)):
+                if trades.iloc[k].Symbol == symbol:
+                    index2 = k
+                    break
+            if trades.iloc[i].Quantity == -trades.iloc[index1].Quantity:
+                PnL = (trades.iloc[index1].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity
+                SL = trades.iloc[index1].Price
                 TP1 = np.nan
                 TP2 = np.nan
-            elif trades.iloc[i+1].Quantity == -trades.iloc[i].Quantity/2:
-                PnL = (trades.iloc[i+1].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity/2 + (trades.iloc[i+2].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity/2
+                TSL = np.nan
+            elif trades.iloc[index1].Quantity == -trades.iloc[i].Quantity/2:
+                PnL = (trades.iloc[index1].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity/2 + (trades.iloc[index2].Price - trades.iloc[i].Price)*trades.iloc[i].Quantity/2
                 SL = np.nan
-                TP1 = min(trades.iloc[i+1].Price, trades.iloc[i+2].Price)
-                TP2 = max(trades.iloc[i+1].Price, trades.iloc[i+2].Price)
+                if trades.iloc[index1]["Tag "] == "Trailing Stop Loss ":
+                    TSL = trades.iloc[index1].Price
+                    TP1 = trades.iloc[index2].Price
+                    TP2 = np.nan
+                elif trades.iloc[index2]["Tag "] == "Trailing Stop Loss ":
+                    TSL = trades.iloc[index2].Price
+                    TP1 = trades.iloc[index1].Price
+                    TP2 = np.nan
+                else:
+                    TP2 = max(trades.iloc[index1].Price, trades.iloc[index2].Price)
+                    TP1 = max(trades.iloc[index1].Price, trades.iloc[index2].Price)
+                    TSL = np.nan
             currency = symbol[3:]
-            PnLUSD = exchange_rate[currencies.index(currency)] * PnL
+            if PnL == 0:
+                PnLUSD = 0
+            elif currency != "USD":
+                PnLUSD = PnL * yf.download(currency+"USD=X", start=pd.to_datetime(trades.index[i]), end=pd.to_datetime(trades.index[i])+ pd.Timedelta("1 day")).iloc[0].Close
+            else:
+                PnLUSD = PnL
             #PnLUSD = c.convert(currency, 'USD', PnL, pd.to_datetime(time))
-            orders = orders.append({"Time": time, "Symbol":symbol, "Price":price, "Quantity":quantity, "SL": SL, "TP1": TP1, "TP2": TP2, "P/L": PnL, "Currency": currency, "P/L (USD)": PnLUSD}, ignore_index=True)
+            orders = orders.append({"Time": time, "Symbol":symbol, "Price":price, "Quantity":quantity, "SL": SL, "TSL": TSL, "TP1": TP1, "TP2": TP2, "P/L": PnL, "Currency": currency, "P/L (USD)": PnLUSD}, ignore_index=True)
     trades.index = pd.to_datetime(trades.index).tz_convert(None)
     name = uploaded_file.name
     #st.write(trades)
@@ -78,11 +103,11 @@ elif uploaded_file is not None and uploaded_table is not None:
         orders.set_index('Time', inplace=True)
         orders["Equity"] = orders["P/L (USD)"].cumsum()
         orders["Equity"] += equity
-        orders.index = pd.to_datetime(orders.index)
+        orders.index = pd.to_datetime(orders.index).tz_convert(None)
         orders["Returns"] = orders.Equity.pct_change()
         orders.at[orders.index[0], "Returns"] = orders.iloc[0]["P/L (USD)"] / equity
         orders.Returns = orders.Returns#.map('{:.2%}'.format)
-        orders = orders.iloc[:-1 , :]
+        #orders = orders.iloc[:-1 , :]
         
         backtest_stats = pf.timeseries.perf_stats(orders.Returns)
         col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
@@ -178,19 +203,9 @@ elif uploaded_file is not None and uploaded_table is not None:
                         instrument = line[20:23]+"_"+line[23:26]
                         distal = lines[index+1][36:]
                         proximal = lines[index+2][38:]
-                        #print(pd.to_datetime(line[40:59]), pd.to_datetime(line[0:19]))
-                        
-                        
-                        
-                        session = trades[(trades.index >= pd.to_datetime(line[40:59])+ pd.Timedelta(pd.to_timedelta("4 hours"))) & (trades.index <= pd.to_datetime(line[0:19])+ pd.Timedelta(pd.to_timedelta("4 hours"))) & (trades.Symbol == line[20:26])]
 
-                        if lines[index+3][28:42] == "Stop Loss Hit:":
-                            exit = lines[index+3][43:]
-                            type = "Stop Loss Hit"
-                        else:
-                            exit = lines[index+3][45:]
-                            type = "Take Profit Hit"
-                        
+                        session = orders[(orders.index >= pd.to_datetime(line[40:59])+ pd.Timedelta(pd.to_timedelta("3 hours"))) & (orders.index <= pd.to_datetime(line[40:59])+ pd.Timedelta(pd.to_timedelta("7 hours"))) & (orders.Symbol == line[20:26])]
+
                         data = api.get_history(instrument = instrument, start = dateStart, end = dateEnd,
                             granularity = granularity, price = "M", localize = False)
 
@@ -203,10 +218,17 @@ elif uploaded_file is not None and uploaded_table is not None:
                         fig.add_hline(y=float(distal), annotation_text="Distal")#, annotation="Distal")
                         #fig.add_hline(y=float(exit), annotation_text=type)
                         for index, row in session.iterrows():
-                            if row.Quantity > 0 and row.Price != 0:
-                                fig.add_hline(y=row.Price, annotation_text="Buy")
-                            elif row.Price != 0:
-                                fig.add_hline(y=row.Price, annotation_text="Sell")
+                            st.write(pd.DataFrame(row).T)
+                            if row.SL > 0:
+                                fig.add_hline(y=row.SL, annotation_text="Stop Loss")
+                            if row.TSL > 0:
+                                fig.add_hline(y=row.TSL, annotation_text="Trailing Stop Loss")
+                            if row.TP1 > 0:
+                                fig.add_hline(y=row.TP1, annotation_text="Take Profit: Prev Breakout")
+                            if row.TP2 > 0:
+                                fig.add_hline(y=row.TP2, annotation_text="Take Profit")
+                            fig.add_hline(y=row.Price, annotation_text="Buy")
+                            
                         fig.update_layout(
                             margin=dict(l=20, r=20, t=20, b=20),
                             width=1200,
